@@ -13,8 +13,9 @@ const WalletConnect = () => {
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [message, setMessage] = useState('');
   const [signature, setSignature] = useState('');
-  // 检查是否安装了 MetaMask
+
   const checkIfWalletIsInstalled = () => {
+    //@ts-ignore
     if (typeof window.ethereum === 'undefined') {
       setError('please install MetaMask wallet');
       return false;
@@ -57,53 +58,13 @@ const WalletConnect = () => {
   };
 
 
-
-  async function addCustomNetwork(networkKey: string) {
-    try {
-      const network = CUSTOM_NETWORKS[networkKey];
-      if (!network) {
-        throw new Error('can not find network');
-      }
-
-      // 格式化 chainId 为十六进制
-      const chainIdHex = `0x${network.chainId.toString(16)}`;
-
-      // 先尝试切换到该网络
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: chainIdHex }],
-        });
-        return true;
-      } catch (switchError: any) {
-        // 如果网络不存在（错误代码 4902），则添加网络
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: chainIdHex,
-              chainName: network.chainName,
-              nativeCurrency: network.nativeCurrency,
-              rpcUrls: network.rpcUrls,
-              blockExplorerUrls: network.blockExplorerUrls
-            }]
-          });
-          return true;
-        }
-        throw switchError;
-      }
-    } catch (error) {
-      console.error('add network failed:', error);
-      throw error;
-    }
-  }
-
   // connect wallet
   const connectWallet = async () => {
     try {
       if (!checkIfWalletIsInstalled()) return;
       const client = createWalletClient({
         chain: flowMainnet,
+        //@ts-ignore
         transport: custom(window.ethereum!)
       })
 
@@ -123,35 +84,7 @@ const WalletConnect = () => {
     }
   };
 
-  // listen to account changes
-  const listenToAccountChanges = () => {
-    if (!checkIfWalletIsInstalled()) return;
 
-    window.ethereum.on('accountsChanged', async (accounts: any) => {
-      if (accounts.length > 0) {
-        const web3 = new Web3(window.ethereum);
-        const balance = await web3.eth.getBalance(accounts[0]);
-        setAccount(accounts[0]);
-        setBalance(web3.utils.toWei(balance, 'ether'));
-
-      } else {
-        // user disconnected all accounts
-        setAccount('');
-        setBalance('');
-      }
-    });
-  };
-
-  // listen to chain changes
-  const listenToChainChanges = () => {
-    if (!checkIfWalletIsInstalled()) return;
-
-    window.ethereum.on('chainChanged', (chainId: string) => {
-      setChainId(parseInt(chainId).toString());
-      // recommend to refresh page when chain changed
-      window.location.reload();
-    });
-  };
 
 
   // send transaction
@@ -159,6 +92,7 @@ const WalletConnect = () => {
     try {
       const client = createWalletClient({
         chain: flowMainnet,
+        //@ts-ignore
         transport: custom(window.ethereum!)
       })
       const [address] = await client.getAddresses()
@@ -178,18 +112,12 @@ const WalletConnect = () => {
     }
   };
 
-  useEffect(() => {
-    listenToAccountChanges();
-    listenToChainChanges();
-  }, []);
-
-
-
 
   const signMessage = async (message: string) => {
     try {
       const client = createWalletClient({
         chain: flowMainnet,
+        //@ts-ignore
         transport: custom(window.ethereum!)
       })
       const [address] = await client.getAddresses()
@@ -199,7 +127,7 @@ const WalletConnect = () => {
       setSignature(signature);
 
       return signature
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error.message
