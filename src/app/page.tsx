@@ -13,16 +13,29 @@ const WalletConnect = () => {
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [message, setMessage] = useState('');
   const [signature, setSignature] = useState('');
+  const [flowWalletProvider, setFlowWalletProvider] = useState(null)
 
-  const checkIfWalletIsInstalled = () => {
-    //@ts-ignore
-    if (typeof window.ethereum === 'undefined') {
-      setError('please install MetaMask wallet');
-      return false;
-    }
-    return true;
-  };
+  const setupEventListeners = () => {
+    // 监听钱包公告事件
+    window.addEventListener(
+      'eip6963:announceProvider',
+      ((event: CustomEvent) => {
+        const { info, provider } = event.detail;
+        console.log('Wallet announced:', info.name);
+        if (info.rdns == 'com.flowfoundation.wallet') {
+          setFlowWalletProvider(provider)
+        }
 
+      }) as EventListener
+    );
+  }
+
+
+  useEffect(() => {
+    setupEventListeners()
+  }, [])
+
+  
   const publicClient = createPublicClient({
     chain: flowMainnet,
     transport: http()
@@ -61,11 +74,11 @@ const WalletConnect = () => {
   // connect wallet
   const connectWallet = async () => {
     try {
-      if (!checkIfWalletIsInstalled()) return;
+
       const client = createWalletClient({
         chain: flowMainnet,
         //@ts-ignore
-        transport: custom(window.ethereum!)
+        transport: custom(flowWalletProvider)
       })
 
       // request user to connect wallet
@@ -93,7 +106,7 @@ const WalletConnect = () => {
       const client = createWalletClient({
         chain: flowMainnet,
         //@ts-ignore
-        transport: custom(window.ethereum!)
+        transport: custom(flowWalletProvider)
       })
       const [address] = await client.getAddresses()
 
@@ -111,7 +124,6 @@ const WalletConnect = () => {
       setError('Send transaction failed:' + err.message);
     }
   };
-
 
   const signMessage = async (message: string) => {
     try {
